@@ -22,6 +22,7 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private int _progressValue;
     [ObservableProperty] private bool _isWatching;
     [ObservableProperty] private string _watchButtonText = "👀 Следить за Входящими";
+    public ObservableCollection<string> LogEntries { get; } = new();
 
     private static System.Windows.Forms.NotifyIcon? _balloon;
     private static void NotifyTray(string title, string text)
@@ -50,12 +51,21 @@ public partial class DashboardViewModel : ObservableObject
         _watcher = watcher;
         _inboxDir = inboxDir;
 
-        _watcher.OnProgress += msg => ProgressText = msg;
-        _watcher.OnLog += msg => NotifyTray("BRAIN", msg);
+        _watcher.OnProgress += msg =>
+        {
+            ProgressText = msg;
+            AddLog($"🔄 {msg}");
+        };
+        _watcher.OnLog += msg =>
+        {
+            NotifyTray("BRAIN", msg);
+            AddLog(msg);
+        };
         _watcher.OnFileProcessed += () =>
         {
             RefreshStats();
             NotifyTray("BRAIN", "Файл обработан");
+            AddLog("✅ Файл обработан");
         };
 
         RefreshStats();
@@ -115,6 +125,17 @@ public partial class DashboardViewModel : ObservableObject
             ProgressText = "Слежение активно";
         }
     }
+
+    private void AddLog(string msg)
+    {
+        var time = DateTime.Now.ToString("HH:mm:ss");
+        LogEntries.Add($"[{time}] {msg}");
+        if (LogEntries.Count > 1000)
+            LogEntries.RemoveAt(0);
+    }
+
+    [RelayCommand]
+    private void ClearLog() => LogEntries.Clear();
 
     [RelayCommand]
     private void OpenInbox()

@@ -369,6 +369,25 @@
                 </Grid>
             </TabItem>
 
+            <!-- Log Tab -->
+            <TabItem Header="Лог">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ListBox Grid.Row="0" ItemsSource="{Binding Dashboard.LogEntries}"
+                             Background="#181825" BorderThickness="0" Foreground="#a6adc8"
+                             FontSize="12" FontFamily="Consolas">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </TabItem>
+
             <!-- Settings Tab -->
             <TabItem Header="Настройки">
                 <ScrollViewer Background="#1e1e2e" VerticalScrollBarVisibility="Auto">

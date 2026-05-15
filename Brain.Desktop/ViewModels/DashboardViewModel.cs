@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Brain.Desktop.Services;
@@ -25,6 +26,7 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private string _watchToggleText = "▶ Автоматика: выкл";
     [ObservableProperty] private string _inboxButtonText = "📂 Открыть Входящие";
     [ObservableProperty] private string _aiShortStatus = "";
+    private readonly object _logLock = new();
     public ObservableCollection<string> LogEntries { get; } = new();
 
     private static System.Windows.Forms.NotifyIcon? _balloon;
@@ -49,6 +51,8 @@ public partial class DashboardViewModel : ObservableObject
 
     public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher, string inboxDir, MainViewModel? mainVm = null)
     {
+        BindingOperations.EnableCollectionSynchronization(LogEntries, _logLock);
+
         _memory = memory;
         _ai = ai;
         _watcher = watcher;

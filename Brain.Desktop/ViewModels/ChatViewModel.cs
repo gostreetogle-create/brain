@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Brain.Desktop.Services;
@@ -15,8 +16,11 @@ public partial class ChatViewModel : ObservableObject
     [ObservableProperty] private bool _isWaiting;
     public ObservableCollection<ChatItem> Messages { get; } = new();
 
+    private readonly object _chatLock = new();
+
     public ChatViewModel(AIService ai, MemoryService memory, EmbeddingService embeddings)
     {
+        BindingOperations.EnableCollectionSynchronization(Messages, _chatLock);
         _ai = ai;
         _memory = memory;
         _embeddings = embeddings;

@@ -60,7 +60,8 @@ public partial class DashboardViewModel : ObservableObject
         var dialog = new OpenFileDialog
         {
             Title = "Выберите файл для обработки",
-            Filter = "Все файлы (*.*)|*.*"
+            Filter = "Все файлы (*.*)|*.*",
+            InitialDirectory = Directory.Exists(_inboxDir) ? _inboxDir : Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
         };
 
         if (dialog.ShowDialog() == true)

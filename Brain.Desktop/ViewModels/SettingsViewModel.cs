@@ -10,22 +10,28 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly AIService _ai;
     private readonly string _envPath;
+    private readonly MemoryService _memory;
     private readonly UpdateService _updater;
+    private string _currentDataDir;
 
     [ObservableProperty] private string _apiKey = "";
     [ObservableProperty] private string _extractModel = "deepseek/deepseek-v4-flash:free";
     [ObservableProperty] private string _chatModel = "deepseek/deepseek-v4-flash:free";
     [ObservableProperty] private string _saveStatus = "";
+    [ObservableProperty] private string _dbPath = "";
+    [ObservableProperty] private string _migrationStatus = "";
     [ObservableProperty] private string _updateStatus = "Проверка...";
     [ObservableProperty] private bool _updateAvailable;
 
-    public SettingsViewModel(AIService ai, string envPath)
+    public SettingsViewModel(AIService ai, string envPath, MemoryService memory, string dataDir)
     {
         _ai = ai;
         _envPath = envPath;
+        _memory = memory;
+        _currentDataDir = dataDir;
         _updater = new UpdateService();
 
-        // Загрузка ключа через DPAPI
+        DbPath = Path.Combine(dataDir, "brain.db");
         ApiKey = LoadEncryptedKey() ?? "";
         LoadEnvModels();
         _ = CheckUpdateAsync();
@@ -41,7 +47,81 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    // DPAPI шифрование
+    [RelayCommand]
+    private void SelectDbPath()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Выберите папку для базы данных",
+            FileName = "brain.db",
+            Filter = "LiteDB (*.db)|*.db"
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            var dir = Path.GetDirectoryName(dialog.FileName)!;
+            DbPath = dialog.FileName;
+            _currentDataDir = dir;
+            MainViewModel.SaveConfig(dir);
+            MigrationStatus = "Путь сохранён. Перезапустите приложение.";
+        }
+    }
+
+    [RelayCommand]
+    private void ExportDb()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Экспортировать базу знаний",
+            Filter = "LiteDB (*.db)|*.db",
+            FileName = $"brain_backup_{DateTime.Now:yyyy-MM-dd}.db"
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            try
+            {
+                File.Copy(DbPath, dialog.FileName, true);
+                MigrationStatus = "База экспортирована.";
+            }
+            catch (Exception ex)
+            {
+                MigrationStatus = $"Ошибка: {ex.Message}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ImportJsonl()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Импортировать brain.jsonl",
+            Filter = "JSONL (*.jsonl)|*.jsonl"
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            try
+            {
+                var count = 0;
+                foreach (var line in File.ReadLines(dialog.FileName))
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    try
+                    {
+                        var record = System.Text.Json.JsonSerializer.Deserialize<Brain.Desktop.Models.MemoryRecord>(line);
+                        if (record != null) { _memory.Insert(record); count++; }
+                    }
+                    catch { }
+                }
+                MigrationStatus = $"Импортировано {count} записей.";
+            }
+            catch (Exception ex)
+            {
+                MigrationStatus = $"Ошибка: {ex.Message}";
+            }
+        }
+    }
+
+    // DPAPI
     private static string KeyFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "BRAIN", "api.key");
@@ -50,9 +130,8 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var path = KeyFilePath;
-            if (!File.Exists(path)) return null;
-            var encrypted = File.ReadAllBytes(path);
+            if (!File.Exists(KeyFilePath)) return null;
+            var encrypted = File.ReadAllBytes(KeyFilePath);
             var bytes = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(bytes);
         }
@@ -113,11 +192,9 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            // Сохраняем ключ через DPAPI (безопасно)
             if (!string.IsNullOrEmpty(ApiKey))
                 SaveEncryptedKey(ApiKey);
 
-            // Модели и пути — в .env (не чувствительные данные)
             File.WriteAllText(_envPath,
                 $"EXTRACTOR_MODEL={ExtractModel}\n" +
                 $"CHAT_MODEL={ChatModel}\n");

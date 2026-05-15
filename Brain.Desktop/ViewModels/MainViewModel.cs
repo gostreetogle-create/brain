@@ -1,4 +1,6 @@
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Brain.Desktop.Models;
 
 namespace Brain.Desktop.ViewModels;
 
@@ -10,21 +12,27 @@ public partial class MainViewModel : ObservableObject
     public ChatViewModel Chat { get; }
     public DataViewerViewModel DataViewer { get; }
     public SettingsViewModel Settings { get; }
+    public Services.MemoryService Memory { get; }
+
+    // Путь к конфигу хранится рядом с EXE
+    private static string ConfigPath => Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory, "brain_config.json");
+
+    public static string DefaultDataDir => Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory, "brain_data");
 
     public MainViewModel()
     {
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        var brainDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", ".."));
-        if (!Directory.Exists(brainDir))
-            brainDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", ".."));
-
-        var dataDir = Path.Combine(brainDir, "brain_data");
+        // Загружаем или создаём конфиг
+        var config = LoadOrCreateConfig();
+        var dataDir = config.DataPath;
         Directory.CreateDirectory(dataDir);
 
         var memoryDb = Path.Combine(dataDir, "brain.db");
-        var envPath = Path.Combine(brainDir, ".env");
+        var envPath = Path.Combine(dataDir, "..", ".env");
+        if (!File.Exists(envPath))
+            envPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");
 
-        // Читаем ключ
         var apiKey = "";
         var extractModel = "deepseek/deepseek-v4-flash:free";
         var chatModel = "deepseek/deepseek-v4-flash:free";
@@ -39,8 +47,15 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        // Инициализация сервисов
-        var memory = new Services.MemoryService(memoryDb);
+        Memory = new Services.MemoryService(memoryDb);
+
+        // Миграция из brain.jsonl в LiteDB (если есть jsonl и нет db)
+        var jsonlPath = Path.Combine(dataDir, "brain.jsonl");
+        if (File.Exists(jsonlPath) && Memory.Count() == 0)
+        {
+            MigrateFromJsonl(jsonlPath);
+        }
+
         var ai = new Services.AIService(apiKey, extractModel, chatModel);
         var processor = new Services.FileProcessor();
         var embeddings = new Services.EmbeddingService();
@@ -49,11 +64,54 @@ public partial class MainViewModel : ObservableObject
         var archiveDir = Path.Combine(dataDir, "archive");
         var errorsDir = Path.Combine(dataDir, "errors");
 
-        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, memory, embeddings);
+        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, Memory, embeddings);
 
-        Dashboard = new DashboardViewModel(memory, ai, watcher, inboxDir);
-        Chat = new ChatViewModel(ai, memory, embeddings);
-        DataViewer = new DataViewerViewModel(memory);
-        Settings = new SettingsViewModel(ai, envPath);
+        Dashboard = new DashboardViewModel(Memory, ai, watcher, inboxDir);
+        Chat = new ChatViewModel(ai, Memory, embeddings);
+        DataViewer = new DataViewerViewModel(Memory);
+        Settings = new SettingsViewModel(ai, envPath, Memory, dataDir);
+    }
+
+    private void MigrateFromJsonl(string jsonlPath)
+    {
+        try
+        {
+            foreach (var line in File.ReadLines(jsonlPath))
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                try
+                {
+                    var record = JsonSerializer.Deserialize<MemoryRecord>(line);
+                    if (record != null) Memory.Insert(record);
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
+    private AppConfig LoadOrCreateConfig()
+    {
+        try
+        {
+            if (File.Exists(ConfigPath))
+            {
+                var json = File.ReadAllText(ConfigPath);
+                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+            }
+        }
+        catch { }
+        return new AppConfig();
+    }
+
+    public static void SaveConfig(string dataPath)
+    {
+        var config = new AppConfig { DataPath = dataPath };
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(config));
+    }
+
+    private class AppConfig
+    {
+        public string DataPath { get; set; } = DefaultDataDir;
     }
 }

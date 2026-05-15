@@ -395,6 +395,19 @@
 
                         <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                             <StackPanel>
+                                <TextBlock Text="База данных" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding Settings.DbPath}" FontSize="11" Foreground="#6c7086" TextWrapping="Wrap"/>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <Button Content="📂 Выбрать папку" Style="{StaticResource FileButton}" Command="{Binding Settings.SelectDbPathCommand}" Margin="0,0,8,0"/>
+                                    <Button Content="💾 Экспорт БД" Style="{StaticResource ActionButton}" Command="{Binding Settings.ExportDbCommand}" Margin="0,0,8,0"/>
+                                    <Button Content="📥 Импорт JSONL" Style="{StaticResource AiButton}" Command="{Binding Settings.ImportJsonlCommand}"/>
+                                </WrapPanel>
+                                <TextBlock Text="{Binding Settings.MigrationStatus}" FontSize="11" Foreground="#a6adc8" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
                                 <TextBlock Text="О системе" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <TextBlock Text="BRAIN — C# WPF (.NET 10)" FontSize="12" Foreground="#a6adc8"/>
                                 <TextBlock Text="OpenRouter: https://openrouter.ai" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>

@@ -33,7 +33,6 @@ Name: "autostart"; Description: "Запускать при старте Windows"
 
 [Files]
 Source: "..\publish\BRAIN.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\brain_data\"; DestDir: "{app}\brain_data"; Flags: ignoreversion recursesubdirs createallsubdirs onlyifdoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

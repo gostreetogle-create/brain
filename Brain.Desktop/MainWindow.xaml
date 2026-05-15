@@ -492,18 +492,29 @@
 
                         <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                             <StackPanel>
-                                <TextBlock Text="OpenRouter API" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="Бэкенд ИИ" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-                                <TextBlock Text="API Key:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding Settings.ApiKey}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+                                <TextBlock Text="Провайдер:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <ComboBox ItemsSource="{Binding Settings.Backends}" SelectedItem="{Binding Settings.Backend}" 
+                                          Background="#45475a" Foreground="#cdd6f4"
+                                          BorderThickness="0" Height="30"/>
 
-                                <TextBlock Text="Модель для анализа документов:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding Settings.ExtractModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+                                <TextBlock Text="API Key (только для OpenRouter):" FontSize="12" Foreground="#a6adc8" Margin="0,8,0,4"/>
+                                <TextBox Text="{Binding Settings.ApiKey}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="Модель для анализа:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Settings.ExtractModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
 
                                 <TextBlock Text="Модель для чата:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding Settings.ChatModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+                                <TextBox Text="{Binding Settings.ChatModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
 
-                                <Button Content="💾 Сохранить" Style="{StaticResource SaveButton}" Command="{Binding Settings.SaveCommand}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                                <TextBlock Text="Ollama URL:" FontSize="12" Foreground="#a6adc8" Margin="0,8,0,4"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding Settings.OllamaUrl}" Style="{StaticResource DarkTextBox}"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Settings.OllamaStatus}" FontSize="11" Foreground="#a6adc8" Margin="0,4,0,8"/>
+
+                                <Button Content="💾 Сохранить" Style="{StaticResource SaveButton}" Command="{Binding Settings.SaveCommand}" Margin="0,4,0,0"/>
                                 <TextBlock Text="{Binding Settings.SaveStatus}" Foreground="#a6e3a1" FontSize="12" Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>

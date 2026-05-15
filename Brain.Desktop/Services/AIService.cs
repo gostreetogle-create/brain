@@ -9,10 +9,13 @@ namespace Brain.Desktop.Services;
 public class AIService
 {
     private readonly HttpClient _http;
+    private readonly OllamaService _ollama;
     private string _apiKey;
     private string _extractModel;
     public string ExtractModel => _extractModel;
     private string _chatModel;
+    private string _backend = "openrouter"; // "openrouter" | "ollama"
+    private string _ollamaUrl = "http://localhost:11434";
 
     private const string BaseUrl = "https://openrouter.ai/api/v1";
 
@@ -21,12 +24,10 @@ public class AIService
         _apiKey = apiKey;
         _extractModel = extractModel;
         _chatModel = chatModel;
-        _http = new HttpClient
-        {
-            Timeout = TimeSpan.FromMinutes(5)
-        };
+        _http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
         _http.DefaultRequestHeaders.Add("HTTP-Referer", "https://github.com/brain");
         _http.DefaultRequestHeaders.Add("X-Title", "Brain Desktop");
+        _ollama = new OllamaService();
     }
 
     public void UpdateSettings(string apiKey, string extractModel, string chatModel)
@@ -36,12 +37,26 @@ public class AIService
         _chatModel = chatModel;
     }
 
+    public void SetBackend(string backend, string ollamaUrl = "http://localhost:11434")
+    {
+        _backend = backend;
+        _ollamaUrl = ollamaUrl;
+        _ollama.BaseUrl = ollamaUrl;
+    }
+
     public async Task<AiHealthResult> CheckConnectionAsync()
     {
+        // Если Ollama — проверяем локальный сервер
+        if (_backend == "ollama")
+        {
+            var ok = await _ollama.IsAvailableAsync();
+            if (ok) return new AiHealthResult { Status = "ok", Model = _extractModel, Message = "Ollama подключён" };
+            return new AiHealthResult { Status = "error", Message = "Ollama не отвечает. Запустите Ollama." };
+        }
+
+        // OpenRouter
         if (string.IsNullOrEmpty(_apiKey))
             return new AiHealthResult { Status = "error", Message = "Нет API ключа" };
-        if (_apiKey.StartsWith("sk-or-v1-твой"))
-            return new AiHealthResult { Status = "error", Message = "Ключ не изменён" };
 
         try
         {
@@ -68,11 +83,20 @@ public class AIService
 
         try
         {
-            var response = await SendChatRequestAsync(_extractModel,
-            [
-                new ChatMessage("system", systemPrompt),
-                new ChatMessage("user", userMsg)
-            ], maxTokens: 4000);
+            string? response;
+
+            if (_backend == "ollama")
+            {
+                response = await _ollama.ChatAsync(_extractModel, systemPrompt, userMsg);
+            }
+            else
+            {
+                response = await SendChatRequestAsync(_extractModel,
+                [
+                    new ChatMessage("system", systemPrompt),
+                    new ChatMessage("user", userMsg)
+                ], maxTokens: 4000);
+            }
 
             if (response == null) return null;
 
@@ -107,6 +131,11 @@ public class AIService
             userMsg = $"Контекст:\n{context}\n\nВопрос: {query}";
         }
 
+        if (_backend == "ollama")
+        {
+            return await _ollama.ChatAsync(_chatModel, systemPrompt, userMsg);
+        }
+
         return await SendChatRequestAsync(_chatModel,
         [
             new ChatMessage("system", systemPrompt),
@@ -119,22 +148,24 @@ public class AIService
         return await SendChatRequestAsync(model, messages, maxTokens);
     }
 
+    public async Task<List<string>> GetOllamaModelsAsync()
+    {
+        return await _ollama.GetModelsAsync();
+    }
+
+    public async Task<bool> IsOllamaAvailableAsync()
+    {
+        return await _ollama.IsAvailableAsync();
+    }
+
     private async Task<string?> SendChatRequestAsync(string model, List<ChatMessage> messages, int maxTokens)
     {
-        var request = new
-        {
-            model,
-            messages,
-            max_tokens = maxTokens,
-            temperature = 0.1
-        };
-
+        var request = new { model, messages, max_tokens = maxTokens, temperature = 0.1 };
         var json = JsonSerializer.Serialize(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-        // Retry до 3 раз с паузой
         const int maxRetries = 3;
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
@@ -146,8 +177,7 @@ public class AIService
 
                 var responseJson = await response.Content.ReadAsStringAsync(cts.Token);
                 using var doc = JsonDocument.Parse(responseJson);
-                var choice = doc.RootElement.GetProperty("choices")[0];
-                return choice.GetProperty("message").GetProperty("content").GetString();
+                return doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
             }
             catch (HttpRequestException) when (attempt < maxRetries)
             {
@@ -158,7 +188,6 @@ public class AIService
                 await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
             }
         }
-
         throw new Exception("Сервер ИИ не ответил после 3 попыток. Попробуйте позже.");
     }
 }

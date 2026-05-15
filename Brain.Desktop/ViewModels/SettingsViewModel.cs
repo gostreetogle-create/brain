@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Security.Cryptography;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -23,6 +24,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _updateStatus = "Проверка...";
     [ObservableProperty] private bool _updateAvailable;
 
+    // Ollama
+    [ObservableProperty] private string _ollamaUrl = "http://localhost:11434";
+    [ObservableProperty] private string _backend = "openrouter";
+    [ObservableProperty] private string _ollamaStatus = "Проверка...";
+    [ObservableProperty] private bool _ollamaAvailable;
+    public List<string> Backends { get; } = ["openrouter", "ollama"];
+    public ObservableCollection<string> OllamaModels { get; } = new();
+
     public SettingsViewModel(AIService ai, string envPath, MemoryService memory, string dataDir)
     {
         _ai = ai;
@@ -33,18 +42,41 @@ public partial class SettingsViewModel : ObservableObject
 
         DbPath = Path.Combine(dataDir, "brain.db");
         ApiKey = LoadEncryptedKey() ?? "";
-        LoadEnvModels();
+        LoadEnv();
         _ = CheckUpdateAsync();
+        _ = CheckOllamaAsync();
     }
 
-    private void LoadEnvModels()
+    private void LoadEnv()
     {
         if (!File.Exists(_envPath)) return;
         foreach (var line in File.ReadLines(_envPath))
         {
             if (line.StartsWith("EXTRACTOR_MODEL=")) ExtractModel = line.Split('=', 2)[1].Trim();
             if (line.StartsWith("CHAT_MODEL=")) ChatModel = line.Split('=', 2)[1].Trim();
+            if (line.StartsWith("BACKEND=")) Backend = line.Split('=', 2)[1].Trim();
+            if (line.StartsWith("OLLAMA_URL=")) OllamaUrl = line.Split('=', 2)[1].Trim();
         }
+    }
+
+    private async Task CheckOllamaAsync()
+    {
+        OllamaStatus = "Проверка...";
+        var ok = await _ai.IsOllamaAvailableAsync();
+        OllamaAvailable = ok;
+        OllamaStatus = ok ? "✅ Ollama доступен" : "❌ Ollama не найден";
+        if (ok)
+        {
+            var models = await _ai.GetOllamaModelsAsync();
+            OllamaModels.Clear();
+            foreach (var m in models) OllamaModels.Add(m);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshOllamaAsync()
+    {
+        await CheckOllamaAsync();
     }
 
     [RelayCommand]
@@ -77,26 +109,15 @@ public partial class SettingsViewModel : ObservableObject
         };
         if (dialog.ShowDialog() == true)
         {
-            try
-            {
-                File.Copy(DbPath, dialog.FileName, true);
-                MigrationStatus = "База экспортирована.";
-            }
-            catch (Exception ex)
-            {
-                MigrationStatus = $"Ошибка: {ex.Message}";
-            }
+            try { File.Copy(DbPath, dialog.FileName, true); MigrationStatus = "База экспортирована."; }
+            catch (Exception ex) { MigrationStatus = $"Ошибка: {ex.Message}"; }
         }
     }
 
     [RelayCommand]
     private void ImportJsonl()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = "Импортировать brain.jsonl",
-            Filter = "JSONL (*.jsonl)|*.jsonl"
-        };
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Импортировать brain.jsonl", Filter = "JSONL (*.jsonl)|*.jsonl" };
         if (dialog.ShowDialog() == true)
         {
             try
@@ -114,25 +135,19 @@ public partial class SettingsViewModel : ObservableObject
                 }
                 MigrationStatus = $"Импортировано {count} записей.";
             }
-            catch (Exception ex)
-            {
-                MigrationStatus = $"Ошибка: {ex.Message}";
-            }
+            catch (Exception ex) { MigrationStatus = $"Ошибка: {ex.Message}"; }
         }
     }
 
-    // DPAPI
     private static string KeyFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "BRAIN", "api.key");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BRAIN", "api.key");
 
     private static string? LoadEncryptedKey()
     {
         try
         {
             if (!File.Exists(KeyFilePath)) return null;
-            var encrypted = File.ReadAllBytes(KeyFilePath);
-            var bytes = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
+            var bytes = ProtectedData.Unprotect(File.ReadAllBytes(KeyFilePath), null, DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(bytes);
         }
         catch { return null; }
@@ -142,8 +157,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var dir = Path.GetDirectoryName(KeyFilePath)!;
         Directory.CreateDirectory(dir);
-        var bytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(key), null, DataProtectionScope.CurrentUser);
-        File.WriteAllBytes(KeyFilePath, bytes);
+        File.WriteAllBytes(KeyFilePath, ProtectedData.Protect(Encoding.UTF8.GetBytes(key), null, DataProtectionScope.CurrentUser));
     }
 
     private async Task CheckUpdateAsync()
@@ -154,21 +168,13 @@ public partial class SettingsViewModel : ObservableObject
             if (hasUpdate)
             {
                 var date = "";
-                if (DateTime.TryParse(_updater.PublishedAt, out var dt))
-                    date = dt.ToString("dd.MM.yyyy HH:mm");
+                if (DateTime.TryParse(_updater.PublishedAt, out var dt)) date = dt.ToString("dd.MM.yyyy HH:mm");
                 UpdateStatus = $"Доступно обновление от {date}";
                 UpdateAvailable = true;
             }
-            else
-            {
-                UpdateStatus = "Актуальная версия";
-                UpdateAvailable = false;
-            }
+            else { UpdateStatus = "Актуальная версия"; UpdateAvailable = false; }
         }
-        catch
-        {
-            UpdateStatus = "Не удалось проверить";
-        }
+        catch { UpdateStatus = "Не удалось проверить"; }
     }
 
     [RelayCommand]
@@ -181,10 +187,7 @@ public partial class SettingsViewModel : ObservableObject
             var installerPath = Path.Combine(Path.GetTempPath(), "BRAIN_Setup.exe");
             await _updater.DownloadAndInstallAsync(installerPath);
         }
-        catch (Exception ex)
-        {
-            UpdateStatus = $"Ошибка: {ex.Message}";
-        }
+        catch (Exception ex) { UpdateStatus = $"Ошибка: {ex.Message}"; }
     }
 
     [RelayCommand]
@@ -195,15 +198,16 @@ public partial class SettingsViewModel : ObservableObject
             if (!string.IsNullOrEmpty(ApiKey))
                 SaveEncryptedKey(ApiKey);
 
+            _ai.SetBackend(Backend, OllamaUrl);
+
             File.WriteAllText(_envPath,
+                $"BACKEND={Backend}\n" +
+                $"OLLAMA_URL={OllamaUrl}\n" +
                 $"EXTRACTOR_MODEL={ExtractModel}\n" +
                 $"CHAT_MODEL={ChatModel}\n");
             _ai.UpdateSettings(ApiKey, ExtractModel, ChatModel);
             SaveStatus = "Сохранено!";
         }
-        catch (Exception ex)
-        {
-            SaveStatus = $"Ошибка: {ex.Message}";
-        }
+        catch (Exception ex) { SaveStatus = $"Ошибка: {ex.Message}"; }
     }
 }

@@ -19,24 +19,41 @@ jobs:
     - name: Restore
       run: dotnet restore Brain.Desktop/Brain.Desktop.csproj
 
-    - name: Build
+    - name: Build EXE
       run: dotnet publish Brain.Desktop/Brain.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -o publish
 
-    - name: Upload EXE
+    - name: Install Inno Setup
+      shell: powershell
+      run: |
+        $url = "https://jrsoftware.org/download.php/is.exe"
+        $out = "$env:TEMP\inno_setup.exe"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $url -OutFile $out
+        Start-Process -Wait -FilePath $out -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$env:ProgramFiles\Inno Setup 6"
+
+    - name: Build Installer
+      shell: powershell
+      run: |
+        & "C:\Program Files\Inno Setup 6\iscc.exe" "Brain.Desktop\installer.iss"
+
+    - name: Upload Installer
       uses: actions/upload-artifact@v4
       with:
-        name: BRAIN
-        path: publish/BRAIN.exe
+        name: BRAIN_Setup
+        path: Brain.Desktop/installer/BRAIN_Setup_*.exe
 
     - name: Delete old release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: powershell
       run: |
-        gh release delete latest --yes 2>$null || true
-        git push --delete origin refs/tags/latest 2>$null || true
+        gh release delete latest --yes 2>$null || $true
+        git push --delete origin refs/tags/latest 2>$null || $true
 
     - name: Create Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: powershell
       run: |
-        gh release create latest publish/BRAIN.exe --title "Latest" --notes "Автоматическая сборка от $(Get-Date -Format 'dd.MM.yyyy HH:mm')" --target ${{ github.sha }}
+        $setup = Get-ChildItem "Brain.Desktop/installer/BRAIN_Setup_*.exe" | Select-Object -First 1
+        gh release create latest $setup.FullName --title "Latest" --notes "Автоматическая сборка от $(Get-Date -Format 'dd.MM.yyyy HH:mm')" --target ${{ github.sha }}

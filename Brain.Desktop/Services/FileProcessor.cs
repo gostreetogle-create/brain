@@ -113,16 +113,18 @@ public class FileProcessor
         return sb.ToString().Trim();
     }
 
-    private string ExtractImage(string path)
+    private string _tesseractExe = "tesseract";
+
+    private async Task EnsureTesseractAsync()
     {
-        // Check if Tesseract is installed
+        // Check if available
         try
         {
             using var proc = new System.Diagnostics.Process
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "tesseract",
+                    FileName = _tesseractExe,
                     Arguments = "--version",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -132,23 +134,65 @@ public class FileProcessor
             };
             proc.Start();
             proc.WaitForExit(2000);
-            if (proc.ExitCode != 0) throw new Exception();
+            if (proc.ExitCode == 0) return; // already installed
         }
-        catch
+        catch { }
+
+        // Try local bundled version
+        var localExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tesseract", "tesseract.exe");
+        if (File.Exists(localExe))
         {
-            throw new Exception(
-                "Для обработки изображений нужен Tesseract OCR.\n" +
-                "Скачайте: https://github.com/UB-Mannheim/tesseract/wiki\n" +
-                "Или сохраните файл как PDF/текст.");
+            _tesseractExe = localExe;
+            return;
         }
 
-        // Tesseract IS installed — run it
+        // Download Tesseract automatically
+        var tessDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tesseract");
+        Directory.CreateDirectory(tessDir);
+
+        var zipUrl = "https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe";
+        var installerPath = Path.Combine(tessDir, "tesseract_setup.exe");
+
+        using (var http = new HttpClient())
+        {
+            http.Timeout = TimeSpan.FromMinutes(5);
+            var response = await http.GetAsync(zipUrl, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+            using var fs = File.Create(installerPath);
+            await response.Content.CopyToAsync(fs);
+        }
+
+        // Silent install to local folder
+        var installArgs = $"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=\"{tessDir}\"";
+        using (var proc = System.Diagnostics.Process.Start(installerPath, installArgs))
+        {
+            proc?.WaitForExit(120000);
+        }
+
+        var installedExe = Path.Combine(tessDir, "tesseract.exe");
+        if (File.Exists(installedExe))
+        {
+            _tesseractExe = installedExe;
+        }
+        else
+        {
+            _tesseractExe = "tesseract";
+        }
+
+        // Cleanup installer
+        try { File.Delete(installerPath); } catch { }
+    }
+
+    private string ExtractImage(string path)
+    {
+        EnsureTesseractAsync().GetAwaiter().GetResult();
+
         var outPath = Path.GetTempFileName();
         try
         {
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "tesseract",
+                FileName = _tesseractExe,
                 Arguments = $"\"{path}\" \"{outPath}\" -l rus+eng",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

@@ -25,16 +25,19 @@ jobs:
     - name: Install Inno Setup
       shell: powershell
       run: |
-        $url = "https://jrsoftware.org/download.php/is.exe"
-        $out = "$env:TEMP\inno_setup.exe"
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -Uri $url -OutFile $out
-        Start-Process -Wait -FilePath $out -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=$env:ProgramFiles\Inno Setup 6"
+        choco install innosetup --confirm --no-progress 2>&1 | Out-Null
+        $iscc = @(
+          "C:\Program Files (x86)\Inno Setup 6\iscc.exe",
+          "C:\Program Files\Inno Setup 6\iscc.exe",
+          "${env:ProgramFiles}\Inno Setup 6\iscc.exe",
+          "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe"
+        ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+        echo "ISCC_PATH=$iscc" >> $env:GITHUB_ENV
 
     - name: Build Installer
       shell: powershell
       run: |
-        & "C:\Program Files\Inno Setup 6\iscc.exe" "Brain.Desktop\installer.iss"
+        & "$env:ISCC_PATH" "Brain.Desktop\installer.iss"
 
     - name: Upload Installer
       uses: actions/upload-artifact@v4
@@ -55,5 +58,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       shell: powershell
       run: |
-        $setup = Get-ChildItem "Brain.Desktop/installer/BRAIN_Setup_*.exe" | Select-Object -First 1
+        $setup = Get-ChildItem "Brain.Desktop\installer\BRAIN_Setup_*.exe" | Select-Object -First 1
         gh release create latest $setup.FullName --title "Latest" --notes "Автоматическая сборка от $(Get-Date -Format 'dd.MM.yyyy HH:mm')" --target ${{ github.sha }}

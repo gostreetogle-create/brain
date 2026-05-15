@@ -109,7 +109,11 @@ public partial class App : Application
         menu.Items.Add(show);
         menu.Items.Add(new Separator());
         var exit = new MenuItem { Header = "🚪 Выход", FontSize = 13 };
-        exit.Click += (_, _) => Shutdown();
+        exit.Click += (_, _) =>
+        {
+            _trayIcon?.Dispose();
+            Environment.Exit(0);
+        };
         menu.Items.Add(exit);
         _trayIcon.ContextMenu = menu;
         _trayIcon.TrayMouseDoubleClick += (_, _) => ShowWindow();

@@ -27,10 +27,8 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (ViewModel.Dashboard.IsWatching)
-        {
-            e.Cancel = true;
-            Hide();
-        }
+        // Всегда скрываем в трей, никогда не закрываем
+        e.Cancel = true;
+        Hide();
     }
 }

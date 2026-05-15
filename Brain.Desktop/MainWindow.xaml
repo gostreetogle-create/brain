@@ -1,0 +1,426 @@
+﻿<Window x:Class="Brain.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:Brain.Desktop.Converters"
+        Title="BRAIN — Цифровой Сотрудник"
+        Height="750" Width="1100" MinWidth="800" MinHeight="500"
+        Background="#1e1e2e" Foreground="#cdd6f4"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <conv:InverseBoolConverter x:Key="InverseBool"/>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#585b70"/>
+            <Setter Property="Padding" Value="20,14"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Grid>
+                            <Border Name="Border" Background="{TemplateBinding Background}" 
+                                    BorderThickness="0" Padding="{TemplateBinding Padding}"
+                                    CornerRadius="0">
+                                <ContentPresenter ContentSource="Header"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                  RecognizesAccessKey="False"/>
+                            </Border>
+                            <Rectangle Name="Accent" Height="2" VerticalAlignment="Bottom"
+                                       Fill="#89b4fa" Opacity="0" Margin="6,0,6,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#cdd6f4"/>
+                                <Setter TargetName="Accent" Property="Opacity" Value="1"/>
+                                <Setter TargetName="Border" Property="Background" Value="#252540"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#a6adc8"/>
+                                <Setter TargetName="Border" Property="Background" Value="#1e1e30"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Базовая кнопка -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#45475a"/>
+            <Setter Property="Foreground" Value="#cdd6f4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" Opacity="0.3" BlurRadius="4" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="Border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.7"/>
+                                <Setter TargetName="Border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Зелёная кнопка (действия) -->
+        <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#a6e3a1"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#a6e3a1" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Синяя кнопка (ИИ) -->
+        <Style x:Key="AiButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#89b4fa"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#89b4fa" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Оранжевая кнопка (файлы) -->
+        <Style x:Key="FileButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#fab387"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#fab387" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Красная кнопка (выход/стоп) -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#f38ba8"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#f38ba8" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Фиолетовая кнопка -->
+        <Style x:Key="PurpleButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#cba6f7"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#cba6f7" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Отправить (чат) -->
+        <Style x:Key="SendButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#89b4fa"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="18,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#89b4fa" Opacity="0.25" BlurRadius="10" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Сохранить -->
+        <Style x:Key="SaveButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#a6e3a1"/>
+            <Setter Property="Foreground" Value="#1e1e2e"/>
+            <Setter Property="Padding" Value="24,12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#a6e3a1" Opacity="0.2" BlurRadius="8" Direction="270"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#313244"/>
+            <Setter Property="Foreground" Value="#cdd6f4"/>
+            <Setter Property="BorderBrush" Value="#45475a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style TargetType="ProgressBar">
+            <Setter Property="Background" Value="#313244"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Foreground" Value="#89b4fa"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#313244"/>
+            <Setter Property="Foreground" Value="#cdd6f4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#cdd6f4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <TabControl x:Name="MainTabs" BorderThickness="0" BorderBrush="Transparent">
+            <TabControl.Resources>
+                <Style TargetType="TabPanel">
+                    <Setter Property="Margin" Value="0"/>
+                </Style>
+            </TabControl.Resources>
+            <TabControl.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#181825" Offset="0"/>
+                    <GradientStop Color="#181825" Offset="0.9"/>
+                    <GradientStop Color="#1e1e2e" Offset="1"/>
+                </LinearGradientBrush>
+            </TabControl.Background>
+            <!-- Dashboard Tab -->
+            <TabItem Header="Главная">
+                <ScrollViewer Background="#1e1e2e" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+                        <TextBlock Text="BRAIN — Цифровой Сотрудник" FontSize="22" FontWeight="Bold" Foreground="#89b4fa" Margin="0,0,0,16"/>
+
+                        <!-- Stats -->
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="Статистика" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Dashboard.DocumentCount, StringFormat='Документов: {0}'}" FontSize="16" Foreground="#f9e2af"/>
+                                        <TextBlock Text="{Binding Dashboard.InboxCount, StringFormat='Во Входящих: {0}'}" FontSize="14" Foreground="#cdd6f4" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Dashboard.ArchiveCount, StringFormat='В архиве: {0}'}" FontSize="16" Foreground="#f9e2af"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="{Binding Dashboard.AiStatus}" FontSize="14"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Progress -->
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Dashboard.ProgressText}" FontSize="13" Foreground="#a6adc8" Margin="0,0,0,6"/>
+                                <ProgressBar Value="{Binding Dashboard.ProgressValue}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="Действия" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <WrapPanel Margin="0,0,0,8">
+                                    <Button Content="{Binding Dashboard.WatchButtonText}" Style="{StaticResource AiButton}" Command="{Binding Dashboard.ToggleWatchCommand}" Margin="0,0,10,10"/>
+                                    <Button Content="📄 Обработать файл" Style="{StaticResource FileButton}" Command="{Binding Dashboard.ProcessFileCommand}" Margin="0,0,10,10"/>
+                                    <Button Content="🤖 Проверить ИИ" Style="{StaticResource PurpleButton}" Command="{Binding Dashboard.CheckAiCommand}" Margin="0,0,10,10"/>
+                                    <Button Content="📂 Открыть Входящие" Style="{StaticResource ActionButton}" Command="{Binding Dashboard.OpenInboxCommand}" Margin="0,0,10,10"/>
+                                </WrapPanel>
+                                <TextBlock Text="{Binding Dashboard.ProgressText}" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <TextBlock Text="💡 Кидайте файлы в папку Входящие — они обработаются автоматически" 
+                                           FontSize="12" Foreground="#6c7086" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Chat Tab -->
+            <TabItem Header="Чат">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <ListBox Grid.Row="0" ItemsSource="{Binding Chat.Messages}" Background="#181825" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,6,0,0">
+                                    <TextBlock Text="{Binding Sender}" FontWeight="Bold" Foreground="{Binding Color}" FontSize="12"/>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="#cdd6f4" FontSize="13" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Grid.Row="1" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding Chat.InputText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}"
+                                 IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}"/>
+                        <Button Grid.Column="1" Content="➤ Отправить" Style="{StaticResource SendButton}" Command="{Binding Chat.SendCommand}"
+                                IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}" Margin="8,0,0,0"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- Data Tab -->
+            <TabItem Header="Данные">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                        <WrapPanel>
+                            <TextBlock Text="Тип:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox ItemsSource="{Binding DataViewer.TypeFilters}"
+                                      SelectedItem="{Binding DataViewer.FilterType}" Background="#45475a" Foreground="#cdd6f4"
+                                      BorderThickness="0" Height="28" Width="100" Margin="0,0,16,0"/>
+
+                            <TextBlock Text="Поиск:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Text="{Binding DataViewer.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DarkTextBox}" Height="28" Width="180" Margin="0,0,16,0"/>
+
+                            <TextBlock Text="Теги:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Text="{Binding DataViewer.TagFilter, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DarkTextBox}" Height="28" Width="120" Margin="0,0,16,0"/>
+
+                            <TextBlock Text="{Binding DataViewer.RecordCount}" 
+                                       Foreground="#f9e2af" VerticalAlignment="Center" FontWeight="Bold"/>
+                        </WrapPanel>
+                    </Border>
+
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding DataViewer.Rows}" Background="#181825" 
+                              Foreground="#cdd6f4" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True"
+                              AlternatingRowBackground="#1e1e2e" RowBackground="#181825"
+                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                              SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Тип" Binding="{Binding DocType}" Width="80"/>
+                            <DataGridTextColumn Header="Источник" Binding="{Binding SourceFile}" Width="150"/>
+                            <DataGridTextColumn Header="Сущности" Binding="{Binding Entities}" Width="200"/>
+                            <DataGridTextColumn Header="Теги" Binding="{Binding Tags}" Width="150"/>
+                            <DataGridTextColumn Header="Содержание" Binding="{Binding Summary}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="2" Background="#313244" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding DataViewer.DetailText}" Foreground="#6c7086"/>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Settings Tab -->
+            <TabItem Header="Настройки">
+                <ScrollViewer Background="#1e1e2e" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16" MaxWidth="600">
+                        <TextBlock Text="Настройки" FontSize="18" FontWeight="Bold" Foreground="#89b4fa" Margin="0,0,0,16"/>
+
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="OpenRouter API" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+                                <TextBlock Text="API Key:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Settings.ApiKey}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Модель для анализа документов:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Settings.ExtractModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Модель для чата:" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Settings.ChatModel}" Style="{StaticResource DarkTextBox}" Margin="0,0,0,10"/>
+
+                                <Button Content="💾 Сохранить" Style="{StaticResource SaveButton}" Command="{Binding Settings.SaveCommand}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                                <TextBlock Text="{Binding Settings.SaveStatus}" Foreground="#a6e3a1" FontSize="12" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="О системе" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Settings.CurrentVersion, StringFormat='Версия: {0}'}" FontSize="12" Foreground="#a6adc8"/>
+                                        <TextBlock Text="C# WPF (.NET 10)" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>
+                                        <TextBlock Text="OpenRouter: https://openrouter.ai" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Button Content="{Binding Settings.UpdateStatus}" 
+                                                Command="{Binding Settings.DownloadUpdateCommand}"
+                                                IsEnabled="{Binding Settings.UpdateAvailable}"
+                                                Style="{StaticResource AiButton}" Margin="0,0,0,4"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{Binding Settings.Changelog}" 
+                                           TextWrapping="Wrap" FontSize="11" Foreground="#a6adc8"
+                                           Margin="0,8,0,0" MaxHeight="60"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

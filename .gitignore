@@ -1,0 +1,32 @@
+# Python
+.env
+__pycache__/
+*.pyc
+*.pyo
+
+# Data
+brain_data/brain.jsonl
+brain_data/index.faiss
+brain_data/processed/*
+brain_data/archive/*
+brain_data/errors/*
+!brain_data/processed/.gitkeep
+!brain_data/errors/.gitkeep
+!brain_data/inbox/.gitkeep
+
+# .NET
+Brain.Desktop/bin/
+Brain.Desktop/obj/
+Brain.Desktop/publish/
+*.user
+*.suo
+*.sln.docstates
+.vs/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

@@ -11,6 +11,7 @@ public class AIService
     private readonly HttpClient _http;
     private string _apiKey;
     private string _extractModel;
+    public string ExtractModel => _extractModel;
     private string _chatModel;
 
     private const string BaseUrl = "https://openrouter.ai/api/v1";
@@ -111,6 +112,11 @@ public class AIService
             new ChatMessage("system", systemPrompt),
             new ChatMessage("user", userMsg)
         ], maxTokens: 2000);
+    }
+
+    public async Task<string?> SendChatRequestRaw(string model, List<ChatMessage> messages, int maxTokens)
+    {
+        return await SendChatRequestAsync(model, messages, maxTokens);
     }
 
     private async Task<string?> SendChatRequestAsync(string model, List<ChatMessage> messages, int maxTokens)

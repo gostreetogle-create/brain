@@ -13,6 +13,7 @@ public class WatcherService : IDisposable
     private readonly AIService _ai;
     private readonly MemoryService _memory;
     private readonly EmbeddingService _embeddings;
+    private readonly MultiAgentService _agents;
 
     public event Action<string>? OnProgress;
     public event Action<string>? OnLog;
@@ -22,7 +23,7 @@ public class WatcherService : IDisposable
 
     public WatcherService(string inboxDir, string archiveDir, string errorsDir,
                           FileProcessor processor, AIService ai, MemoryService memory,
-                          EmbeddingService embeddings)
+                          EmbeddingService embeddings, MultiAgentService agents)
     {
         _inboxDir = inboxDir;
         _archiveDir = archiveDir;
@@ -31,6 +32,7 @@ public class WatcherService : IDisposable
         _ai = ai;
         _memory = memory;
         _embeddings = embeddings;
+        _agents = agents;
 
         Directory.CreateDirectory(_inboxDir);
         Directory.CreateDirectory(_archiveDir);
@@ -86,29 +88,34 @@ public class WatcherService : IDisposable
             if (string.IsNullOrWhiteSpace(text))
                 throw new Exception("Пустой текст");
 
-            OnProgress?.Invoke("Анализ ИИ...");
+            OnProgress?.Invoke("Мульти-агентный анализ (3 агента)...");
             var hash = _processor.ComputeHash(filePath);
-            var analysis = await _ai.AnalyzeDocumentAsync(text, filename);
-            if (analysis == null)
-                throw new Exception("Ошибка анализа ИИ");
+            var multiResult = await _agents.AnalyzeAsync(text, filename);
 
             OnProgress?.Invoke("Создание эмбеддингов...");
-            var embedText = $"{analysis.Summary}\n{string.Join(", ", analysis.Entities.Select(e => e.Name))}\n{string.Join(", ", analysis.Tags)}";
+            var embedText = $"{multiResult.AnalystResult?.Summary ?? ""}\n{string.Join(", ", multiResult.MergedEntities.Select(e => e.Name))}\n{string.Join(", ", multiResult.MergedTags)}";
             var embedding = await Task.Run(() => _embeddings.ComputeEmbedding(embedText));
 
             OnProgress?.Invoke("Сохранение в память...");
             var record = new Models.MemoryRecord
             {
                 Id = $"doc_{Guid.NewGuid().ToString("N")[..12]}",
-                DocType = analysis.DocType,
-                SourceFile = filename,
+                DocType = multiResult.MergedDocType,
+                SourceFile = multiResult.LibrarianResult?.Title ?? filename,
                 SourceHash = hash,
-                Summary = analysis.Summary,
-                Uncertainty = analysis.Uncertainty,
-                Entities = analysis.Entities,
-                Facts = analysis.Facts,
-                Tags = analysis.Tags,
-                EmbeddingArray = embedding
+                Summary = multiResult.AnalystResult?.Summary ?? multiResult.LibrarianResult?.Title ?? "",
+                Entities = multiResult.MergedEntities,
+                Tags = multiResult.MergedTags,
+                EmbeddingArray = embedding,
+                AgentData = new Models.AgentData
+                {
+                    SecretaryRaw = multiResult.SecretaryResult?.RawOutput,
+                    AnalystRaw = multiResult.AnalystResult?.RawOutput,
+                    LibrarianRaw = multiResult.LibrarianResult?.RawOutput,
+                    Title = multiResult.LibrarianResult?.Title,
+                    Importance = multiResult.LibrarianResult?.Importance,
+                    Department = multiResult.AnalystResult?.Department
+                }
             };
             _memory.Insert(record);
 

@@ -89,12 +89,13 @@ public partial class MainViewModel : ObservableObject
         var ai = new Services.AIService(apiKey, extractModel, chatModel);
         var processor = new Services.FileProcessor();
         var embeddings = new Services.EmbeddingService();
+        var agents = new Services.MultiAgentService(ai);
 
         var inboxDir = Path.Combine(dataDir, "inbox");
         var archiveDir = Path.Combine(dataDir, "archive");
         var errorsDir = Path.Combine(dataDir, "errors");
 
-        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, Memory, embeddings);
+        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, Memory, embeddings, agents);
 
         Dashboard = new DashboardViewModel(Memory, ai, watcher, inboxDir, this);
         Chat = new ChatViewModel(ai, Memory, embeddings);

@@ -23,6 +23,17 @@ public class MemoryRecord
         set => Embedding = value.Select(f => (double)f).ToList();
     }
     [JsonPropertyName("relations")] public List<RelationInfo> Relations { get; set; } = new();
+    [JsonPropertyName("agent_data")] public AgentData? AgentData { get; set; }
+}
+
+public class AgentData
+{
+    public string? SecretaryRaw { get; set; }
+    public string? AnalystRaw { get; set; }
+    public string? LibrarianRaw { get; set; }
+    public string? Title { get; set; }
+    public string? Importance { get; set; }
+    public string? Department { get; set; }
 }
 
 public class EntityInfo

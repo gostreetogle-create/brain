@@ -29,7 +29,7 @@ public partial class MainViewModel : ObservableObject
         Directory.CreateDirectory(dataDir);
 
         var memoryDb = Path.Combine(dataDir, "brain.db");
-        var envPath = Path.Combine(dataDir, "..", ".env");
+        var envPath = Path.Combine(dataDir, ".env");
         if (!File.Exists(envPath))
             envPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");
 
@@ -49,8 +49,10 @@ public partial class MainViewModel : ObservableObject
 
         Memory = new Services.MemoryService(memoryDb);
 
-        // Миграция из brain.jsonl в LiteDB (если есть jsonl и нет db)
-        var jsonlPath = Path.Combine(dataDir, "brain.jsonl");
+        // Миграция из brain.jsonl (рядом с EXE или в папке данных)
+        var jsonlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "brain.jsonl");
+        if (!File.Exists(jsonlPath))
+            jsonlPath = Path.Combine(dataDir, "brain.jsonl");
         if (File.Exists(jsonlPath) && Memory.Count() == 0)
         {
             MigrateFromJsonl(jsonlPath);

@@ -97,4 +97,12 @@ public partial class DashboardViewModel : ObservableObject
         if (Directory.Exists(_inboxDir))
             System.Diagnostics.Process.Start("explorer.exe", _inboxDir);
     }
+
+    [RelayCommand]
+    private void OpenDataFolder()
+    {
+        var dir = Path.GetDirectoryName(_inboxDir);
+        if (dir != null && Directory.Exists(dir))
+            System.Diagnostics.Process.Start("explorer.exe", dir);
+    }
 }

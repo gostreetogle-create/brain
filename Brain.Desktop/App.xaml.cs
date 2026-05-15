@@ -68,6 +68,13 @@ public partial class App : Application
 
     private static System.Drawing.Icon CreateIcon()
     {
+        var icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "brain.ico");
+        if (File.Exists(icoPath))
+        {
+            try { return new System.Drawing.Icon(icoPath); }
+            catch { }
+        }
+        // Fallback: blue circle with B
         using var bmp = new System.Drawing.Bitmap(32, 32);
         using var g = System.Drawing.Graphics.FromImage(bmp);
         g.Clear(System.Drawing.Color.Transparent);

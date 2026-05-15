@@ -9,6 +9,7 @@
 
     <!-- Single-file publish -->
     <AssemblyName>BRAIN</AssemblyName>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <ApplicationIcon>brain.ico</ApplicationIcon>
     <Version>1.0.0.0</Version>
     <FileVersion>1.0.0.0</FileVersion>

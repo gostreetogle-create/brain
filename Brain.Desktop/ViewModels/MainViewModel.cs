@@ -14,24 +14,24 @@ public partial class MainViewModel : ObservableObject
     public SettingsViewModel Settings { get; }
     public Services.MemoryService Memory { get; }
 
-    // Путь к конфигу хранится рядом с EXE
-    private static string ConfigPath => Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "brain_config.json");
+    // Данные хранятся в %LocalAppData%/BRAIN/
+    public static string AppDataDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "BRAIN");
 
-    public static string DefaultDataDir => Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "brain_data");
+    private static string ConfigPath => Path.Combine(AppDataDir, "brain_config.json");
 
     public MainViewModel()
     {
-        // Загружаем или создаём конфиг
+        // Загружаем конфиг или используем AppData
         var config = LoadOrCreateConfig();
         var dataDir = config.DataPath;
         Directory.CreateDirectory(dataDir);
 
         var memoryDb = Path.Combine(dataDir, "brain.db");
-        var envPath = Path.Combine(dataDir, ".env");
+        var envPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");
         if (!File.Exists(envPath))
-            envPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");
+            envPath = Path.Combine(dataDir, ".env");
 
         var apiKey = "";
         var extractModel = "deepseek/deepseek-v4-flash:free";
@@ -49,14 +49,8 @@ public partial class MainViewModel : ObservableObject
 
         Memory = new Services.MemoryService(memoryDb);
 
-        // Миграция из brain.jsonl (рядом с EXE или в папке данных)
-        var jsonlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "brain.jsonl");
-        if (!File.Exists(jsonlPath))
-            jsonlPath = Path.Combine(dataDir, "brain.jsonl");
-        if (File.Exists(jsonlPath) && Memory.Count() == 0)
-        {
-            MigrateFromJsonl(jsonlPath);
-        }
+        // Миграция из brain.jsonl
+        MigrateFromJsonlIfNeeded(dataDir);
 
         var ai = new Services.AIService(apiKey, extractModel, chatModel);
         var processor = new Services.FileProcessor();
@@ -74,20 +68,19 @@ public partial class MainViewModel : ObservableObject
         Settings = new SettingsViewModel(ai, envPath, Memory, dataDir);
     }
 
-    private void MigrateFromJsonl(string jsonlPath)
+    private void MigrateFromJsonlIfNeeded(string dataDir)
     {
+        if (Memory.Count() > 0) return;
+        var jsonl = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "brain.jsonl");
+        if (!File.Exists(jsonl))
+            jsonl = Path.Combine(dataDir, "brain.jsonl");
+        if (!File.Exists(jsonl)) return;
+
         try
         {
-            foreach (var line in File.ReadLines(jsonlPath))
-            {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                try
-                {
-                    var record = JsonSerializer.Deserialize<MemoryRecord>(line);
-                    if (record != null) Memory.Insert(record);
-                }
-                catch { }
-            }
+            foreach (var line in File.ReadLines(jsonl))
+                if (!string.IsNullOrWhiteSpace(line))
+                    try { Memory.Insert(JsonSerializer.Deserialize<MemoryRecord>(line)!); } catch { }
         }
         catch { }
     }
@@ -97,10 +90,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             if (File.Exists(ConfigPath))
-            {
-                var json = File.ReadAllText(ConfigPath);
-                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
-            }
+                return JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(ConfigPath)) ?? new AppConfig();
         }
         catch { }
         return new AppConfig();
@@ -108,12 +98,12 @@ public partial class MainViewModel : ObservableObject
 
     public static void SaveConfig(string dataPath)
     {
-        var config = new AppConfig { DataPath = dataPath };
-        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(config));
+        Directory.CreateDirectory(AppDataDir);
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new AppConfig { DataPath = dataPath }));
     }
 
     private class AppConfig
     {
-        public string DataPath { get; set; } = DefaultDataDir;
+        public string DataPath { get; set; } = Path.Combine(AppDataDir, "brain_data");
     }
 }

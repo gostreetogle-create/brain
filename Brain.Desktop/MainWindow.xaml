@@ -271,13 +271,36 @@
                         <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="Действия" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                                <WrapPanel Margin="0,0,0,8">
-                                    <Button Content="{Binding Dashboard.WatchButtonText}" Style="{StaticResource AiButton}" Command="{Binding Dashboard.ToggleWatchCommand}" Margin="0,0,10,10"/>
-                                    <Button Content="📄 Обработать файл" Style="{StaticResource FileButton}" Command="{Binding Dashboard.ProcessFileCommand}" Margin="0,0,10,10"/>
-                                    <Button Content="🤖 Проверить ИИ" Style="{StaticResource PurpleButton}" Command="{Binding Dashboard.CheckAiCommand}" Margin="0,0,10,10"/>
-                                    <Button Content="📂 Открыть Входящие" Style="{StaticResource ActionButton}" Command="{Binding Dashboard.OpenInboxCommand}" Margin="0,0,10,10"/>
-                                </WrapPanel>
-                                <TextBlock Text="{Binding Dashboard.ProgressText}" FontSize="12" Foreground="#a6adc8" Margin="0,0,0,4"/>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <WrapPanel Grid.Column="0">
+                                        <Button Content="{Binding Dashboard.InboxButtonText}" Style="{StaticResource ActionButton}"
+                                                Command="{Binding Dashboard.OpenInboxCommand}" Margin="0,0,10,10" Width="220" Height="44"/>
+                                        <Button Content="📄 Выбрать файл" Style="{StaticResource FileButton}"
+                                                Command="{Binding Dashboard.ProcessFileCommand}" Margin="0,0,10,10" Height="44"/>
+                                        <Button Content="💬 Задать вопрос" Style="{StaticResource AiButton}"
+                                                Command="{Binding Dashboard.OpenChatCommand}" Margin="0,0,10,10" Height="44"/>
+                                    </WrapPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Button Content="{Binding Dashboard.WatchToggleText}" 
+                                                Style="{StaticResource DangerButton}" Width="140" Height="36"
+                                                Command="{Binding Dashboard.ToggleWatchCommand}" FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Dashboard.ProgressText}" FontSize="12" Foreground="#a6adc8" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Dashboard.AiShortStatus}" FontSize="11" Foreground="#a6adc8" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                   Cursor="Hand"/>
+                                    </StackPanel>
+                                </Grid>
                                 <TextBlock Text="💡 Кидайте файлы в папку Входящие — они обработаются автоматически" 
                                            FontSize="12" Foreground="#6c7086" TextWrapping="Wrap"/>
                             </StackPanel>

@@ -96,7 +96,7 @@ public partial class MainViewModel : ObservableObject
 
         var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, Memory, embeddings);
 
-        Dashboard = new DashboardViewModel(Memory, ai, watcher, inboxDir);
+        Dashboard = new DashboardViewModel(Memory, ai, watcher, inboxDir, this);
         Chat = new ChatViewModel(ai, Memory, embeddings);
         DataViewer = new DataViewerViewModel(Memory);
         Settings = new SettingsViewModel(ai, envPath, Memory, dataDir);

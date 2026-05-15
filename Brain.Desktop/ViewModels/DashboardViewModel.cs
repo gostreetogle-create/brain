@@ -12,6 +12,7 @@ public partial class DashboardViewModel : ObservableObject
     private readonly AIService _ai;
     private readonly WatcherService _watcher;
     private readonly string _inboxDir;
+    private readonly MainViewModel? _mainVm;
 
     [ObservableProperty] private int _documentCount;
     [ObservableProperty] private int _inboxCount;
@@ -21,7 +22,9 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private string _progressText = "Ожидание...";
     [ObservableProperty] private int _progressValue;
     [ObservableProperty] private bool _isWatching;
-    [ObservableProperty] private string _watchButtonText = "👀 Следить за Входящими";
+    [ObservableProperty] private string _watchToggleText = "▶ Автоматика: выкл";
+    [ObservableProperty] private string _inboxButtonText = "📂 Открыть Входящие";
+    [ObservableProperty] private string _aiShortStatus = "";
     public ObservableCollection<string> LogEntries { get; } = new();
 
     private static System.Windows.Forms.NotifyIcon? _balloon;
@@ -44,12 +47,13 @@ public partial class DashboardViewModel : ObservableObject
         catch { }
     }
 
-    public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher, string inboxDir)
+    public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher, string inboxDir, MainViewModel? mainVm = null)
     {
         _memory = memory;
         _ai = ai;
         _watcher = watcher;
         _inboxDir = inboxDir;
+        _mainVm = mainVm;
 
         _watcher.OnProgress += msg =>
         {
@@ -76,6 +80,9 @@ public partial class DashboardViewModel : ObservableObject
     {
         DocumentCount = _memory.Count();
         InboxCount = Directory.Exists(_inboxDir) ? Directory.GetFiles(_inboxDir).Length : 0;
+        InboxButtonText = InboxCount > 0
+            ? $"📂 Открыть Входящие ({InboxCount})"
+            : "📂 Открыть Входящие";
     }
 
     [RelayCommand]
@@ -83,9 +90,11 @@ public partial class DashboardViewModel : ObservableObject
     {
         AiStatus = "ИИ: проверка...";
         AiStatusColor = "Yellow";
+        AiShortStatus = "🟡 проверка...";
         var result = await _ai.CheckConnectionAsync();
         AiStatus = result.Status == "ok" ? $"ИИ: подключено ({result.Model})" : $"ИИ: {result.Message}";
         AiStatusColor = result.Status == "ok" ? "LightGreen" : "Salmon";
+        AiShortStatus = result.Status == "ok" ? "🟢 ИИ готов" : "🔴 ИИ недоступен";
     }
 
     [RelayCommand]
@@ -114,28 +123,25 @@ public partial class DashboardViewModel : ObservableObject
         {
             _watcher.Stop();
             IsWatching = false;
-            WatchButtonText = "👀 Следить за Входящими";
+            WatchToggleText = "▶ Автоматика: выкл";
             ProgressText = "Слежение остановлено";
         }
         else
         {
             _watcher.Start();
             IsWatching = true;
-            WatchButtonText = "⏹ Остановить слежение";
+            WatchToggleText = "⏹ Автоматика: вкл";
             ProgressText = "Слежение активно";
         }
-    }
-
-    private void AddLog(string msg)
-    {
-        var time = DateTime.Now.ToString("HH:mm:ss");
-        LogEntries.Add($"[{time}] {msg}");
-        if (LogEntries.Count > 1000)
-            LogEntries.RemoveAt(0);
+        AddLog($"ℹ️ Слежение: {(IsWatching ? "включено" : "выключено")}");
     }
 
     [RelayCommand]
-    private void ClearLog() => LogEntries.Clear();
+    private void OpenChat()
+    {
+        if (_mainVm != null)
+            _mainVm.SelectedTab = 1; // вкладка чата
+    }
 
     [RelayCommand]
     private void OpenInbox()
@@ -150,5 +156,16 @@ public partial class DashboardViewModel : ObservableObject
         var dir = Path.GetDirectoryName(_inboxDir);
         if (dir != null && Directory.Exists(dir))
             System.Diagnostics.Process.Start("explorer.exe", dir);
+    }
+
+    [RelayCommand]
+    private void ClearLog() => LogEntries.Clear();
+
+    private void AddLog(string msg)
+    {
+        var time = DateTime.Now.ToString("HH:mm:ss");
+        LogEntries.Add($"[{time}] {msg}");
+        if (LogEntries.Count > 1000)
+            LogEntries.RemoveAt(0);
     }
 }

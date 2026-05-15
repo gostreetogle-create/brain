@@ -25,8 +25,23 @@ public partial class MainViewModel : ObservableObject
     {
         // Загружаем конфиг или используем AppData
         var config = LoadOrCreateConfig();
+
+        // Проверяем, что путь существует и доступен для записи
         var dataDir = config.DataPath;
-        Directory.CreateDirectory(dataDir);
+        if (!Directory.Exists(dataDir))
+        {
+            try
+            {
+                Directory.CreateDirectory(dataDir);
+            }
+            catch
+            {
+                // Если не можем создать — используем AppData по умолчанию
+                dataDir = Path.Combine(AppDataDir, "brain_data");
+                Directory.CreateDirectory(dataDir);
+                SaveConfig(dataDir);
+            }
+        }
 
         var memoryDb = Path.Combine(dataDir, "brain.db");
         var envPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");

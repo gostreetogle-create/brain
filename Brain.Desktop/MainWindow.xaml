@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:Brain.Desktop.Converters"
+        xmlns:local="clr-namespace:Brain.Desktop"
         Title="BRAIN — Цифровой Сотрудник"
         Height="750" Width="1100" MinWidth="800" MinHeight="500"
         Background="#1e1e2e" Foreground="#cdd6f4"
@@ -313,33 +314,105 @@
             <TabItem Header="Чат">
                 <Grid Margin="16">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <ListBox Grid.Row="0" ItemsSource="{Binding Chat.Messages}" Background="#181825" BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+                    <!-- Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Chat.MessageCount, StringFormat='Сообщений: {0}'}" 
+                                   FontSize="12" Foreground="#6c7086" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="🗑 Очистить" Command="{Binding Chat.ClearChatCommand}" 
+                                Style="{StaticResource ActionButton}" Height="30" FontSize="11" Margin="0,0,8,0"/>
+                    </Grid>
+
+                    <!-- Messages -->
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Chat.Messages}" Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,8"
+                             HorizontalContentAlignment="Stretch">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="0,6,0,0">
-                                    <TextBlock Text="{Binding Sender}" FontWeight="Bold" Foreground="{Binding Color}" FontSize="12"/>
-                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="#cdd6f4" FontSize="13" Margin="0,2,0,0"/>
-                                </StackPanel>
+                                <Border Margin="0,4,0,4" Padding="0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="HorizontalAlignment" Value="Left"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Border CornerRadius="12" Padding="12,8" MaxWidth="500"
+                                            Background="#313244">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#313244"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                        <Setter Property="Background" Value="#45475a"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{Binding Color}" CornerRadius="10" 
+                                                        Width="24" Height="24" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding Initials}" FontSize="10" FontWeight="Bold" 
+                                                               Foreground="#1e1e2e" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Sender}" FontWeight="Bold" 
+                                                           Foreground="{Binding Color}" FontSize="12" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Time}" FontSize="10" 
+                                                           Foreground="#6c7086" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="#cdd6f4" 
+                                                       FontSize="13" Margin="0,6,0,0"/>
+                                            <Button Content="📋 Копировать" FontSize="10" Height="22" Padding="8,0"
+                                                    HorizontalAlignment="Right" Margin="0,6,0,0"
+                                                    Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:MainWindow}}, Path=DataContext.Chat.CopyMessageCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <Grid Grid.Row="1" Margin="0,4,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding Chat.InputText, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource DarkTextBox}"
-                                 IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}"/>
-                        <Button Grid.Column="1" Content="➤ Отправить" Style="{StaticResource SendButton}" Command="{Binding Chat.SendCommand}"
-                                IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}" Margin="8,0,0,0"/>
-                    </Grid>
+                    <!-- Typing indicator -->
+                    <TextBlock Grid.Row="1" Text="{Binding Chat.TypingIndicator}" FontSize="11" Foreground="#6c7086"
+                               FontStyle="Italic" VerticalAlignment="Bottom" Margin="4,0,0,16"/>
+
+                    <!-- Input area -->
+                    <Border Grid.Row="2" Background="#313244" CornerRadius="12" Padding="8" Margin="0,4,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding Chat.InputText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="#181825" Foreground="#cdd6f4" BorderThickness="0" Padding="12,8"
+                                     FontSize="13" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="80"
+                                     IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}"
+                                     VerticalScrollBarVisibility="Auto"/>
+                            <Button Grid.Column="1" Content="➤" Style="{StaticResource SendButton}" 
+                                    Command="{Binding Chat.SendCommand}"
+                                    IsEnabled="{Binding Chat.IsWaiting, Converter={StaticResource InverseBool}}"
+                                    Width="40" Height="40" Padding="0" Margin="8,0,0,0" FontSize="18"/>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 

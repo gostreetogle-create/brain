@@ -12,6 +12,7 @@ public class WatcherService : IDisposable
     private readonly FileProcessor _processor;
     private readonly AIService _ai;
     private readonly MemoryService _memory;
+    private readonly EmbeddingService _embeddings;
 
     public event Action<string>? OnProgress;
     public event Action<string>? OnLog;
@@ -20,7 +21,8 @@ public class WatcherService : IDisposable
     public bool IsRunning { get; private set; }
 
     public WatcherService(string inboxDir, string archiveDir, string errorsDir,
-                          FileProcessor processor, AIService ai, MemoryService memory)
+                          FileProcessor processor, AIService ai, MemoryService memory,
+                          EmbeddingService embeddings)
     {
         _inboxDir = inboxDir;
         _archiveDir = archiveDir;
@@ -28,6 +30,7 @@ public class WatcherService : IDisposable
         _processor = processor;
         _ai = ai;
         _memory = memory;
+        _embeddings = embeddings;
 
         Directory.CreateDirectory(_inboxDir);
         Directory.CreateDirectory(_archiveDir);
@@ -89,6 +92,10 @@ public class WatcherService : IDisposable
             if (analysis == null)
                 throw new Exception("Ошибка анализа ИИ");
 
+            OnProgress?.Invoke("Создание эмбеддингов...");
+            var embedText = $"{analysis.Summary}\n{string.Join(", ", analysis.Entities.Select(e => e.Name))}\n{string.Join(", ", analysis.Tags)}";
+            var embedding = await Task.Run(() => _embeddings.ComputeEmbedding(embedText));
+
             OnProgress?.Invoke("Сохранение в память...");
             var record = new Models.MemoryRecord
             {
@@ -100,9 +107,10 @@ public class WatcherService : IDisposable
                 Uncertainty = analysis.Uncertainty,
                 Entities = analysis.Entities,
                 Facts = analysis.Facts,
-                Tags = analysis.Tags
+                Tags = analysis.Tags,
+                EmbeddingArray = embedding
             };
-            _memory.Append(record);
+            _memory.Insert(record);
 
             // Move to archive
             var month = DateTime.Now.ToString("yyyy-MM");

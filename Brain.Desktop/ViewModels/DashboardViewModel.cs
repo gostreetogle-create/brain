@@ -23,15 +23,12 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private bool _isWatching;
     [ObservableProperty] private string _watchButtonText = "👀 Следить за Входящими";
 
-    public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher)
+    public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher, string inboxDir)
     {
         _memory = memory;
         _ai = ai;
         _watcher = watcher;
-
-        _inboxDir = Path.Combine(
-            Path.GetDirectoryName(Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory)) ?? "",
-            "brain_data", "inbox");
+        _inboxDir = inboxDir;
 
         _watcher.OnProgress += msg => ProgressText = msg;
         _watcher.OnLog += msg => { };

@@ -1,4 +1,5 @@
-using System.Windows.Input;
+using System.Security.Cryptography;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Brain.Desktop.Services;
@@ -15,11 +16,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _extractModel = "deepseek/deepseek-v4-flash:free";
     [ObservableProperty] private string _chatModel = "deepseek/deepseek-v4-flash:free";
     [ObservableProperty] private string _saveStatus = "";
-
-    // Update
     [ObservableProperty] private string _updateStatus = "Проверка...";
     [ObservableProperty] private bool _updateAvailable;
-    [ObservableProperty] private string _updateDate = "";
 
     public SettingsViewModel(AIService ai, string envPath)
     {
@@ -27,17 +25,46 @@ public partial class SettingsViewModel : ObservableObject
         _envPath = envPath;
         _updater = new UpdateService();
 
+        // Загрузка ключа через DPAPI
+        ApiKey = LoadEncryptedKey() ?? "";
+        LoadEnvModels();
         _ = CheckUpdateAsync();
+    }
 
-        if (File.Exists(envPath))
+    private void LoadEnvModels()
+    {
+        if (!File.Exists(_envPath)) return;
+        foreach (var line in File.ReadLines(_envPath))
         {
-            foreach (var line in File.ReadLines(envPath))
-            {
-                if (line.StartsWith("OPENROUTER_API_KEY=")) ApiKey = line.Split('=', 2)[1].Trim();
-                if (line.StartsWith("EXTRACTOR_MODEL=")) ExtractModel = line.Split('=', 2)[1].Trim();
-                if (line.StartsWith("CHAT_MODEL=")) ChatModel = line.Split('=', 2)[1].Trim();
-            }
+            if (line.StartsWith("EXTRACTOR_MODEL=")) ExtractModel = line.Split('=', 2)[1].Trim();
+            if (line.StartsWith("CHAT_MODEL=")) ChatModel = line.Split('=', 2)[1].Trim();
         }
+    }
+
+    // DPAPI шифрование
+    private static string KeyFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "BRAIN", "api.key");
+
+    private static string? LoadEncryptedKey()
+    {
+        try
+        {
+            var path = KeyFilePath;
+            if (!File.Exists(path)) return null;
+            var encrypted = File.ReadAllBytes(path);
+            var bytes = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        catch { return null; }
+    }
+
+    private static void SaveEncryptedKey(string key)
+    {
+        var dir = Path.GetDirectoryName(KeyFilePath)!;
+        Directory.CreateDirectory(dir);
+        var bytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(key), null, DataProtectionScope.CurrentUser);
+        File.WriteAllBytes(KeyFilePath, bytes);
     }
 
     private async Task CheckUpdateAsync()
@@ -52,7 +79,6 @@ public partial class SettingsViewModel : ObservableObject
                     date = dt.ToString("dd.MM.yyyy HH:mm");
                 UpdateStatus = $"Доступно обновление от {date}";
                 UpdateAvailable = true;
-                UpdateDate = date;
             }
             else
             {
@@ -87,12 +113,16 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
+            // Сохраняем ключ через DPAPI (безопасно)
+            if (!string.IsNullOrEmpty(ApiKey))
+                SaveEncryptedKey(ApiKey);
+
+            // Модели и пути — в .env (не чувствительные данные)
             File.WriteAllText(_envPath,
-                $"OPENROUTER_API_KEY={ApiKey}\n" +
                 $"EXTRACTOR_MODEL={ExtractModel}\n" +
                 $"CHAT_MODEL={ChatModel}\n");
             _ai.UpdateSettings(ApiKey, ExtractModel, ChatModel);
-            SaveStatus = "Сохранено! Перезапуск не требуется.";
+            SaveStatus = "Сохранено!";
         }
         catch (Exception ex)
         {

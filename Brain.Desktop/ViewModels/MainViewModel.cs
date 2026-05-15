@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Windows.Input;
 
 namespace Brain.Desktop.ViewModels;
 
@@ -20,12 +19,12 @@ public partial class MainViewModel : ObservableObject
             brainDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", ".."));
 
         var dataDir = Path.Combine(brainDir, "brain_data");
-        var memoryFile = Path.Combine(dataDir, "brain.jsonl");
-        var inboxDir = Path.Combine(dataDir, "inbox");
-        var archiveDir = Path.Combine(dataDir, "archive");
-        var errorsDir = Path.Combine(dataDir, "errors");
+        Directory.CreateDirectory(dataDir);
 
+        var memoryDb = Path.Combine(dataDir, "brain.db");
         var envPath = Path.Combine(brainDir, ".env");
+
+        // Читаем ключ
         var apiKey = "";
         var extractModel = "deepseek/deepseek-v4-flash:free";
         var chatModel = "deepseek/deepseek-v4-flash:free";
@@ -40,13 +39,20 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        var memory = new Services.MemoryService(memoryFile);
+        // Инициализация сервисов
+        var memory = new Services.MemoryService(memoryDb);
         var ai = new Services.AIService(apiKey, extractModel, chatModel);
         var processor = new Services.FileProcessor();
-        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, memory);
+        var embeddings = new Services.EmbeddingService();
 
-        Dashboard = new DashboardViewModel(memory, ai, watcher);
-        Chat = new ChatViewModel(ai, memory);
+        var inboxDir = Path.Combine(dataDir, "inbox");
+        var archiveDir = Path.Combine(dataDir, "archive");
+        var errorsDir = Path.Combine(dataDir, "errors");
+
+        var watcher = new Services.WatcherService(inboxDir, archiveDir, errorsDir, processor, ai, memory, embeddings);
+
+        Dashboard = new DashboardViewModel(memory, ai, watcher, inboxDir);
+        Chat = new ChatViewModel(ai, memory, embeddings);
         DataViewer = new DataViewerViewModel(memory);
         Settings = new SettingsViewModel(ai, envPath);
     }

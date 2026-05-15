@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Brain.Desktop.Models;
 using Brain.Desktop.Services;
@@ -9,7 +8,6 @@ namespace Brain.Desktop.ViewModels;
 public partial class DataViewerViewModel : ObservableObject
 {
     private readonly MemoryService _memory;
-    private List<MemoryRecord> _allRecords = new();
 
     [ObservableProperty] private string _filterType = "Все";
     [ObservableProperty] private string _searchText = "";
@@ -28,31 +26,17 @@ public partial class DataViewerViewModel : ObservableObject
 
     public void LoadData()
     {
-        _allRecords = _memory.LoadAll();
         ApplyFilters();
     }
 
     public void ApplyFilters()
     {
         Rows.Clear();
-        var filtered = _allRecords.AsEnumerable();
-
-        if (FilterType != "Все")
-            filtered = filtered.Where(r => r.DocType == FilterType);
-
-        if (!string.IsNullOrEmpty(SearchText))
-        {
-            var search = SearchText.ToLower();
-            filtered = filtered.Where(r =>
-                JsonSerializer.Serialize(r).ToLower().Contains(search));
-        }
-
-        if (!string.IsNullOrEmpty(TagFilter))
-        {
-            var tag = TagFilter.ToLower();
-            filtered = filtered.Where(r =>
-                r.Tags.Any(t => t.ToLower().Contains(tag)));
-        }
+        var filtered = _memory.Search(
+            docType: FilterType,
+            textFilter: SearchText,
+            tagFilter: TagFilter
+        );
 
         foreach (var r in filtered)
         {

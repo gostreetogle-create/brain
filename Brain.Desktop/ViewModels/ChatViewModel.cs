@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Brain.Desktop.Services;
@@ -10,15 +9,17 @@ public partial class ChatViewModel : ObservableObject
 {
     private readonly AIService _ai;
     private readonly MemoryService _memory;
+    private readonly EmbeddingService _embeddings;
 
     [ObservableProperty] private string _inputText = "";
     [ObservableProperty] private bool _isWaiting;
     public ObservableCollection<ChatItem> Messages { get; } = new();
 
-    public ChatViewModel(AIService ai, MemoryService memory)
+    public ChatViewModel(AIService ai, MemoryService memory, EmbeddingService embeddings)
     {
         _ai = ai;
         _memory = memory;
+        _embeddings = embeddings;
     }
 
     [RelayCommand]
@@ -33,20 +34,23 @@ public partial class ChatViewModel : ObservableObject
 
         try
         {
-            // Search context
-            var records = _memory.LoadAll();
-            var context = "";
-            var matches = records.Where(r =>
-                r.Summary?.Contains(query, StringComparison.OrdinalIgnoreCase) == true ||
-                r.Tags?.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase)) == true ||
-                r.Entities?.Any(e => e.Name?.Contains(query, StringComparison.OrdinalIgnoreCase) == true) == true
-            ).Take(5).ToList();
+            // Векторный поиск по смыслу
+            var queryEmbedding = await Task.Run(() => _embeddings.ComputeEmbedding(query));
+            var allRecords = _memory.GetAll();
+            var similar = _embeddings.SearchSimilar(allRecords, queryEmbedding, topK: 5, minScore: 0.25f);
 
-            if (matches.Count > 0)
+            string context;
+            if (similar.Count > 0)
             {
-                var parts = matches.Select(r =>
-                    $"[{r.DocType}] {r.SourceFile}\nСущности: {string.Join(", ", r.Entities.Select(e => e.Name))}\nСводка: {r.Summary}");
+                var parts = similar.Select(x =>
+                    $"[{x.Record.DocType}] {x.Record.SourceFile} (схожесть: {x.Score:P1})\n" +
+                    $"Сущности: {string.Join(", ", x.Record.Entities.Select(e => e.Name))}\n" +
+                    $"Сводка: {x.Record.Summary}");
                 context = string.Join("\n---\n", parts);
+            }
+            else
+            {
+                context = "";
             }
 
             var response = await _ai.ChatAsync(query, context);

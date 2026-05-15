@@ -1,65 +1,89 @@
-using System.Text.Json;
+using LiteDB;
 using Brain.Desktop.Models;
 
 namespace Brain.Desktop.Services;
 
-public class MemoryService
+public class MemoryService : IDisposable
 {
-    private readonly string _filePath;
-    private readonly object _lock = new();
+    private readonly LiteDatabase _db;
+    private readonly ILiteCollection<MemoryRecord> _records;
 
-    public MemoryService(string filePath)
+    public MemoryService(string dbPath)
     {
-        _filePath = filePath;
-        var dir = Path.GetDirectoryName(filePath);
+        var dir = Path.GetDirectoryName(dbPath);
         if (dir != null) Directory.CreateDirectory(dir);
+
+        _db = new LiteDatabase($"Filename={dbPath};Connection=direct");
+        _records = _db.GetCollection<MemoryRecord>("records");
+        _records.EnsureIndex(r => r.DocType);
+        _records.EnsureIndex(r => r.SourceFile);
+        _records.EnsureIndex(r => r.Timestamp);
     }
 
-    public List<MemoryRecord> LoadAll()
+    public void Insert(MemoryRecord record)
     {
-        if (!File.Exists(_filePath)) return new();
-        var records = new List<MemoryRecord>();
-        lock (_lock)
-        {
-            foreach (var line in File.ReadLines(_filePath))
-            {
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                try
-                {
-                    var record = JsonSerializer.Deserialize<MemoryRecord>(line);
-                    if (record != null) records.Add(record);
-                }
-                catch { }
-            }
-        }
-        return records;
+        _records.Insert(record);
     }
 
-    public void Append(MemoryRecord record)
+    public MemoryRecord? FindById(string id)
     {
-        var json = JsonSerializer.Serialize(record);
-        lock (_lock)
-        {
-            File.AppendAllText(_filePath, json + "\n");
-        }
+        return _records.FindById(id);
+    }
+
+    public List<MemoryRecord> GetAll()
+    {
+        return _records.FindAll().ToList();
     }
 
     public int Count()
     {
-        if (!File.Exists(_filePath)) return 0;
-        lock (_lock) return File.ReadLines(_filePath).Count(l => !string.IsNullOrWhiteSpace(l));
+        return _records.Count();
+    }
+
+    public List<MemoryRecord> Search(string? docType = null, string? textFilter = null, string? tagFilter = null)
+    {
+        var query = _records.Query();
+
+        if (!string.IsNullOrEmpty(docType) && docType != "Все")
+            query = query.Where(r => r.DocType == docType);
+
+        if (!string.IsNullOrEmpty(tagFilter))
+            query = query.Where(r => r.Tags.Any(t => t.Contains(tagFilter, StringComparison.OrdinalIgnoreCase)));
+
+        var results = query.ToList();
+
+        if (!string.IsNullOrEmpty(textFilter))
+        {
+            var f = textFilter.ToLower();
+            results = results.Where(r =>
+                (r.Summary?.ToLower().Contains(f) == true) ||
+                r.Entities.Any(e => e.Name?.ToLower().Contains(f) == true) ||
+                r.Tags.Any(t => t.ToLower().Contains(f))
+            ).ToList();
+        }
+
+        return results;
+    }
+
+    public List<MemoryRecord> GetRecent(int count = 10)
+    {
+        return _records.Query().OrderByDescending(r => r.Timestamp).Limit(count).ToList();
     }
 
     public StatsInfo GetStats()
     {
-        var records = LoadAll();
-        var stats = new StatsInfo
+        var all = GetAll();
+        return new StatsInfo
         {
-            TotalDocuments = records.Count,
-            ByType = records.GroupBy(r => r.DocType).ToDictionary(g => g.Key, g => g.Count()),
-            TotalEntities = records.Sum(r => r.Entities.Count),
-            TotalFacts = records.Sum(r => r.Facts.Count)
+            TotalDocuments = all.Count,
+            ByType = all.GroupBy(r => r.DocType).ToDictionary(g => g.Key, g => g.Count()),
+            TotalEntities = all.Sum(r => r.Entities.Count),
+            TotalFacts = all.Sum(r => r.Facts.Count)
         };
-        return stats;
+    }
+
+    public void Dispose()
+    {
+        _db?.Dispose();
     }
 }

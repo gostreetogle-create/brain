@@ -17,6 +17,11 @@ public class MemoryRecord
     [JsonPropertyName("facts")] public List<FactInfo> Facts { get; set; } = new();
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = new();
     [JsonPropertyName("embedding")] public List<double> Embedding { get; set; } = new();
+    [JsonIgnore] public float[] EmbeddingArray
+    {
+        get => Embedding.Select(d => (float)d).ToArray();
+        set => Embedding = value.Select(f => (double)f).ToList();
+    }
     [JsonPropertyName("relations")] public List<RelationInfo> Relations { get; set; } = new();
 }
 

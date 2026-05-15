@@ -20,7 +20,7 @@ jobs:
       run: dotnet restore Brain.Desktop/Brain.Desktop.csproj
 
     - name: Build EXE
-      run: dotnet publish Brain.Desktop/Brain.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -o publish
+      run: dotnet publish Brain.Desktop/Brain.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -o Brain.Desktop/publish
 
     - name: Install Inno Setup
       shell: powershell
@@ -50,8 +50,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       shell: powershell
       run: |
-        gh release delete latest --yes 2>$null || $true
-        git push --delete origin refs/tags/latest 2>$null || $true
+        gh release delete latest --yes 2>$null; if (-not $?) { "ignore" }
+        git push --delete origin refs/tags/latest 2>$null; if (-not $?) { "ignore" }
 
     - name: Create Release
       env:

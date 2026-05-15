@@ -32,7 +32,7 @@ Name: "desktopicon"; Description: "Создать ярлык на рабочем
 Name: "autostart"; Description: "Запускать при старте Windows"; GroupDescription: "Дополнительно:"
 
 [Files]
-Source: "..\publish\BRAIN.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "publish\BRAIN.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

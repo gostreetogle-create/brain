@@ -20,7 +20,10 @@ public class AIService
         _apiKey = apiKey;
         _extractModel = extractModel;
         _chatModel = chatModel;
-        _http = new HttpClient();
+        _http = new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(5)
+        };
         _http.DefaultRequestHeaders.Add("HTTP-Referer", "https://github.com/brain");
         _http.DefaultRequestHeaders.Add("X-Title", "Brain Desktop");
     }
@@ -62,21 +65,28 @@ public class AIService
         var systemPrompt = "Ты — ИИ-аналитик документов. Извлеки структурированную информацию. Ответь ТОЛЬКО JSON.";
         var userMsg = $"Файл: {filename}\n\nТекст:\n{text[..Math.Min(text.Length, 50000)]}";
 
-        var response = await SendChatRequestAsync(_extractModel,
-        [
-            new ChatMessage("system", systemPrompt),
-            new ChatMessage("user", userMsg)
-        ], maxTokens: 4000);
-
-        if (response == null) return null;
-
         try
         {
-            return JsonSerializer.Deserialize<AnalysisResult>(response);
+            var response = await SendChatRequestAsync(_extractModel,
+            [
+                new ChatMessage("system", systemPrompt),
+                new ChatMessage("user", userMsg)
+            ], maxTokens: 4000);
+
+            if (response == null) return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<AnalysisResult>(response);
+            }
+            catch
+            {
+                return new AnalysisResult { Summary = response[..Math.Min(response.Length, 500)], Uncertainty = 1.0 };
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            return new AnalysisResult { Summary = response[..Math.Min(response.Length, 500)], Uncertainty = 1.0 };
+            throw new Exception($"Ошибка ИИ: {ex.Message}");
         }
     }
 
@@ -116,15 +126,34 @@ public class AIService
         var json = JsonSerializer.Serialize(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        var response = await _http.PostAsync($"{BaseUrl}/chat/completions", content);
-        response.EnsureSuccessStatusCode();
 
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-        var choice = doc.RootElement.GetProperty("choices")[0];
-        return choice.GetProperty("message").GetProperty("content").GetString();
+        // Retry до 3 раз с паузой
+        const int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                var response = await _http.PostAsync($"{BaseUrl}/chat/completions", content, cts.Token);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(responseJson);
+                var choice = doc.RootElement.GetProperty("choices")[0];
+                return choice.GetProperty("message").GetProperty("content").GetString();
+            }
+            catch (HttpRequestException) when (attempt < maxRetries)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
+            }
+            catch (TaskCanceledException) when (attempt < maxRetries)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
+            }
+        }
+
+        throw new Exception("Сервер ИИ не ответил после 3 попыток. Попробуйте позже.");
     }
 }
 

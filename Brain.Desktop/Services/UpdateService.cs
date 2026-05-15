@@ -10,16 +10,14 @@ public class UpdateService
     private readonly HttpClient _http;
     private const string RepoUrl = "https://api.github.com/repos/gostreetogle-create/brain/releases/latest";
 
-    public string? CurrentVersion { get; }
-    public string? LatestVersion { get; private set; }
     public string? DownloadUrl { get; private set; }
     public string? Changelog { get; private set; }
+    public string? PublishedAt { get; private set; }
 
     public UpdateService()
     {
         _http = new HttpClient();
         _http.DefaultRequestHeaders.Add("User-Agent", "BRAIN-UpdateChecker/1.0");
-        CurrentVersion = GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0.0";
     }
 
     public async Task<bool> CheckForUpdatesAsync()
@@ -28,18 +26,14 @@ public class UpdateService
         {
             var response = await _http.GetStringAsync(RepoUrl);
             var release = JsonSerializer.Deserialize<GitHubRelease>(response);
-            if (release == null) return false;
+            if (release?.Assets == null || release.Assets.Count == 0) return false;
 
-            LatestVersion = release.TagName?.TrimStart('v');
-            DownloadUrl = release.Assets?.FirstOrDefault()?.BrowserDownloadUrl;
-            Changelog = release.Body;
+            DownloadUrl = release.Assets[0].BrowserDownloadUrl;
+            Changelog = release.Body ?? "";
+            PublishedAt = release.PublishedAt ?? "";
 
-            if (LatestVersion == null || CurrentVersion == null) return false;
-
-            var current = Version.TryParse(CurrentVersion, out var cv) ? cv : new Version(0, 0, 0);
-            var latest = Version.TryParse(LatestVersion, out var lv) ? lv : new Version(0, 0, 0);
-
-            return latest > current;
+            // Если есть ссылка на скачивание — обновление доступно
+            return !string.IsNullOrEmpty(DownloadUrl);
         }
         catch
         {
@@ -61,7 +55,6 @@ public class UpdateService
         using var fileStream = File.Create(installerPath);
         await response.Content.CopyToAsync(fileStream);
 
-        // Запустить установщик и выйти
         Process.Start(new ProcessStartInfo
         {
             FileName = installerPath,
@@ -76,6 +69,7 @@ public class UpdateService
     {
         [JsonPropertyName("tag_name")] public string? TagName { get; set; }
         [JsonPropertyName("body")] public string? Body { get; set; }
+        [JsonPropertyName("published_at")] public string? PublishedAt { get; set; }
         [JsonPropertyName("assets")] public List<GitHubAsset>? Assets { get; set; }
     }
 

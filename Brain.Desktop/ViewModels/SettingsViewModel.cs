@@ -17,10 +17,9 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _saveStatus = "";
 
     // Update
-    [ObservableProperty] private string _currentVersion = "";
     [ObservableProperty] private string _updateStatus = "Проверка...";
     [ObservableProperty] private bool _updateAvailable;
-    [ObservableProperty] private string _changelog = "";
+    [ObservableProperty] private string _updateDate = "";
 
     public SettingsViewModel(AIService ai, string envPath)
     {
@@ -28,7 +27,6 @@ public partial class SettingsViewModel : ObservableObject
         _envPath = envPath;
         _updater = new UpdateService();
 
-        CurrentVersion = _updater.CurrentVersion ?? "1.0.0.0";
         _ = CheckUpdateAsync();
 
         if (File.Exists(envPath))
@@ -49,13 +47,16 @@ public partial class SettingsViewModel : ObservableObject
             var hasUpdate = await _updater.CheckForUpdatesAsync();
             if (hasUpdate)
             {
-                UpdateStatus = $"Доступна версия {_updater.LatestVersion}";
+                var date = "";
+                if (DateTime.TryParse(_updater.PublishedAt, out var dt))
+                    date = dt.ToString("dd.MM.yyyy HH:mm");
+                UpdateStatus = $"Доступно обновление от {date}";
                 UpdateAvailable = true;
-                Changelog = _updater.Changelog ?? "";
+                UpdateDate = date;
             }
             else
             {
-                UpdateStatus = "У вас актуальная версия";
+                UpdateStatus = "Актуальная версия";
                 UpdateAvailable = false;
             }
         }

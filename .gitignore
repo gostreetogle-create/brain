@@ -10,6 +10,7 @@ brain_data/index.faiss
 brain_data/processed/*
 brain_data/archive/*
 brain_data/errors/*
+brain_data/inbox/*
 !brain_data/processed/.gitkeep
 !brain_data/errors/.gitkeep
 !brain_data/inbox/.gitkeep

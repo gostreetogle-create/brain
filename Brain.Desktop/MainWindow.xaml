@@ -396,26 +396,21 @@
                         <Border Background="#313244" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="О системе" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Text="BRAIN — C# WPF (.NET 10)" FontSize="12" Foreground="#a6adc8"/>
+                                <TextBlock Text="OpenRouter: https://openrouter.ai" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>
+                                <Separator Background="#45475a" Margin="0,10"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="{Binding Settings.CurrentVersion, StringFormat='Версия: {0}'}" FontSize="12" Foreground="#a6adc8"/>
-                                        <TextBlock Text="C# WPF (.NET 10)" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>
-                                        <TextBlock Text="OpenRouter: https://openrouter.ai" FontSize="12" Foreground="#a6adc8" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <Button Content="{Binding Settings.UpdateStatus}" 
-                                                Command="{Binding Settings.DownloadUpdateCommand}"
-                                                IsEnabled="{Binding Settings.UpdateAvailable}"
-                                                Style="{StaticResource AiButton}" Margin="0,0,0,4"/>
-                                    </StackPanel>
+                                    <TextBlock Grid.Column="0" Text="{Binding Settings.UpdateStatus}" 
+                                               VerticalAlignment="Center" FontSize="12" Foreground="#a6adc8"/>
+                                    <Button Grid.Column="1" Content="Скачать обновление" 
+                                            Command="{Binding Settings.DownloadUpdateCommand}"
+                                            IsEnabled="{Binding Settings.UpdateAvailable}"
+                                            Style="{StaticResource AiButton}" Margin="12,0,0,0"/>
                                 </Grid>
-                                <TextBlock Text="{Binding Settings.Changelog}" 
-                                           TextWrapping="Wrap" FontSize="11" Foreground="#a6adc8"
-                                           Margin="0,8,0,0" MaxHeight="60"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

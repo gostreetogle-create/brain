@@ -47,6 +47,25 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
+        // Если ключа нет в .env — пробуем загрузить из DPAPI
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            try
+            {
+                var keyPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "BRAIN", "api.key");
+                if (File.Exists(keyPath))
+                {
+                    var encrypted = File.ReadAllBytes(keyPath);
+                    var bytes = System.Security.Cryptography.ProtectedData.Unprotect(
+                        encrypted, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+                    apiKey = System.Text.Encoding.UTF8.GetString(bytes);
+                }
+            }
+            catch { }
+        }
+
         Memory = new Services.MemoryService(memoryDb);
 
         // Миграция из brain.jsonl

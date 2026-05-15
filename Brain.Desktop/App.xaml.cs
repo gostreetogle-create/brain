@@ -9,6 +9,7 @@ namespace Brain.Desktop;
 
 public partial class App : Application
 {
+    private static Mutex? _mutex;
     private static readonly string LogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "BRAIN", "brain.log");
@@ -18,6 +19,16 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Запрет второго экземпляра
+        bool createdNew;
+        _mutex = new Mutex(true, "BRAIN_AI_SINGLE_INSTANCE", out createdNew);
+        if (!createdNew)
+        {
+            MessageBox.Show("BRAIN уже запущен.", "BRAIN", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
         // Глобальный перехват ошибок
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             LogFatal(args.ExceptionObject as Exception, "AppDomain crash");

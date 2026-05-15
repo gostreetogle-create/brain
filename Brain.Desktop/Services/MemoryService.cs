@@ -13,7 +13,7 @@ public class MemoryService : IDisposable
         var dir = Path.GetDirectoryName(dbPath);
         if (dir != null) Directory.CreateDirectory(dir);
 
-        _db = new LiteDatabase($"Filename={dbPath};Connection=direct");
+        _db = new LiteDatabase($"Filename={dbPath};Connection=shared;Timeout=5");
         _records = _db.GetCollection<MemoryRecord>("records");
         _records.EnsureIndex(r => r.DocType);
         _records.EnsureIndex(r => r.SourceFile);

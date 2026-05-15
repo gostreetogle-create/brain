@@ -8,8 +8,7 @@ namespace Brain.Desktop.Services;
 public class UpdateService
 {
     private readonly HttpClient _http;
-    private const string RepoUrl = "https://api.github.com/repos/ВАШ_ЛОГИН/ВАШ_РЕПОЗИТОРИЙ/releases/latest";
-    // ⚠️ Замените ВАШ_ЛОГИН/ВАШ_РЕПОЗИТОРИЙ после создания репозитория на GitHub
+    private const string RepoUrl = "https://api.github.com/repos/gostreetogle-create/brain/releases/latest";
 
     public string? CurrentVersion { get; }
     public string? LatestVersion { get; private set; }

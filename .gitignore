@@ -21,3 +21,8 @@ Thumbs.db
 
 # Env
 .env
+
+# Installer (build locally)
+*_Setup_*.exe
+Brain.Desktop/installer/
+

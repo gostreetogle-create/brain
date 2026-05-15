@@ -23,6 +23,26 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private bool _isWatching;
     [ObservableProperty] private string _watchButtonText = "👀 Следить за Входящими";
 
+    private static System.Windows.Forms.NotifyIcon? _balloon;
+    private static void NotifyTray(string title, string text)
+    {
+        try
+        {
+            if (_balloon == null)
+            {
+                _balloon = new System.Windows.Forms.NotifyIcon
+                {
+                    Icon = System.Drawing.SystemIcons.Information,
+                    Visible = true
+                };
+            }
+            _balloon.BalloonTipTitle = title;
+            _balloon.BalloonTipText = text.Length > 200 ? text[..200] : text;
+            _balloon.ShowBalloonTip(3000);
+        }
+        catch { }
+    }
+
     public DashboardViewModel(MemoryService memory, AIService ai, WatcherService watcher, string inboxDir)
     {
         _memory = memory;
@@ -31,8 +51,12 @@ public partial class DashboardViewModel : ObservableObject
         _inboxDir = inboxDir;
 
         _watcher.OnProgress += msg => ProgressText = msg;
-        _watcher.OnLog += msg => { };
-        _watcher.OnFileProcessed += RefreshStats;
+        _watcher.OnLog += msg => NotifyTray("BRAIN", msg);
+        _watcher.OnFileProcessed += () =>
+        {
+            RefreshStats();
+            NotifyTray("BRAIN", "Файл обработан");
+        };
 
         RefreshStats();
         _ = CheckAiAsync();

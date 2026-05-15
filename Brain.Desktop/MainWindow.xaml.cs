@@ -7,10 +7,12 @@ public partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
 
-    public MainWindow()
+    public MainWindow() : this(null) { }
+
+    public MainWindow(MainViewModel? viewModel)
     {
         InitializeComponent();
-        ViewModel = new MainViewModel();
+        ViewModel = viewModel ?? new MainViewModel();
         DataContext = ViewModel;
 
         StateChanged += OnStateChanged;
@@ -20,9 +22,7 @@ public partial class MainWindow : Window
     private void OnStateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
-        {
             Hide();
-        }
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)

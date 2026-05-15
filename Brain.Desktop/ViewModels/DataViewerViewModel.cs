@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Brain.Desktop.Models;
 using Brain.Desktop.Services;
@@ -18,8 +19,11 @@ public partial class DataViewerViewModel : ObservableObject
     public ObservableCollection<DataRow> Rows { get; } = new();
     public List<string> TypeFilters { get; } = ["Все", "invoice", "contract", "claim", "note", "other"];
 
+    private readonly object _rowsLock = new();
+
     public DataViewerViewModel(MemoryService memory)
     {
+        BindingOperations.EnableCollectionSynchronization(Rows, _rowsLock);
         _memory = memory;
         LoadData();
     }
